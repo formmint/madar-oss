@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MADAR OSS</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#080b17;color:#f3f5ff;--panel:#11162a;--border:#29314d;--muted:#aeb8d4;--accent:#bba5ff;--mint:#4fe2db}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr)}
+aside{display:flex;flex-direction:column;gap:36px;padding:32px 22px;background:#0d1122;border-inline-end:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px;direction:ltr;font-weight:800;letter-spacing:.1em}.brand span{color:var(--mint);font-size:24px}.brand small,.studio{color:var(--muted)}
+nav{display:grid;gap:8px}.studio{margin-block-start:auto}a{color:inherit;text-decoration:none}nav a{padding:12px;border-radius:10px}nav a[aria-current]{background:#262043;color:#e7dbff}
+main{padding:clamp(20px,5vw,64px);max-width:1500px;width:100%;margin-inline:auto}header{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:20px 0 34px;background:radial-gradient(ellipse at top,#422b7545,transparent 70%)}
+h1{font-size:clamp(28px,5vw,46px);margin:0}h2{margin:0 0 16px}p{color:var(--muted)}#workspace{margin:0 0 8px;color:var(--mint)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px}.card,.panel,dialog{border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:20px}.card{display:grid;gap:8px}.card strong{font-size:34px}.card span{color:var(--muted)}
+.toolbar,.row,footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.toolbar{margin-bottom:14px}.toolbar input{min-width:0;width:min(320px,55%)}.row{padding:14px 0;border-block-start:1px solid var(--border);flex-wrap:wrap}.row p{margin:4px 0 0}.row strong,.row p{overflow-wrap:anywhere}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.status{color:var(--mint);font-size:.85rem}
+button,input,select{font:inherit;color:inherit;background:#0e1326;border:1px solid var(--border);border-radius:9px;padding:9px 12px}button{cursor:pointer}button:hover,nav a:hover,.card:hover{border-color:var(--accent);background-color:#282143}.primary{background:#693dc8;border-color:#8965e5;color:white}.danger{color:#ffc2c9}:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+dialog{width:min(440px,calc(100% - 32px));color:inherit}dialog::backdrop{background:#02030acc}label{display:grid;gap:6px;margin:12px 0}footer{justify-content:flex-end;margin-top:20px}#notice{min-height:1.4em}.empty{margin:12px 0}
+@media(max-width:680px){body{display:block}aside{padding:12px 20px;gap:8px;border-inline-end:0;border-block-end:1px solid var(--border)}nav{display:flex;flex-wrap:wrap;gap:2px}nav a{padding:7px}.studio{display:none}.card,.panel{padding:12px}.cards{gap:6px}.card strong{font-size:24px}header{padding-top:8px}}
+</style>
+<body>
+<aside>
+  <a class="brand" href="#overview"><span aria-hidden="true">◉</span> MADAR <small>OSS</small></a>
+  <nav id="nav" aria-label="Navigation"></nav>
+  <span class="studio">formmint</span>
+</aside>
+<main>
+  <header><div><p id="workspace"></p><h1 id="title"></h1></div><button id="language" type="button"></button></header>
+  <section id="content"></section>
+  <p id="notice" role="status"></p>
+</main>
+<dialog id="dialog">
+  <form id="editor"><h2 id="dialog-title"></h2><div id="fields"></div><footer><button type="button" id="cancel"></button><button class="primary" id="save"></button></footer></form>
+</dialog>
+<script>
+const types = ['clients', 'projects', 'tasks'];
+const labels = {
+  ar: {overview:'لوحة العمل', clients:'العملاء', projects:'المشاريع', tasks:'المهام', workspace:'مساحة عمل الوكالة', language:'English', add:'إضافة', edit:'تعديل', remove:'حذف', save:'حفظ', cancel:'إلغاء', search:'بحث بالاسم', name:'الاسم', client:'العميل', project:'المشروع', status:'الحالة', due:'تاريخ الاستحقاق', planned:'مجدولة', active:'قيد التنفيذ', done:'مكتملة', empty:'لا توجد عناصر لعرضها.', recent:'المهام المفتوحة', saved:'تم الحفظ.', removed:'تم الحذف.', blocked:'احذف العناصر المرتبطة أولًا.', needClient:'أضف عميلًا أولًا.', needProject:'أضف مشروعًا أولًا.', duplicate:'الاسم مستخدم بالفعل.', invalid:'أدخل اسمًا واختر عنصرًا صالحًا.', storageError:'تعذّر حفظ البيانات في هذا المتصفح.', confirm:'هل تريد حذف هذا العنصر؟'},
+  en: {overview:'Workspace overview', clients:'Clients', projects:'Projects', tasks:'Tasks', workspace:'Agency workspace', language:'العربية', add:'Add', edit:'Edit', remove:'Delete', save:'Save', cancel:'Cancel', search:'Search by name', name:'Name', client:'Client', project:'Project', status:'Status', due:'Due date', planned:'Planned', active:'In progress', done:'Completed', empty:'No items to show.', recent:'Open tasks', saved:'Saved.', removed:'Deleted.', blocked:'Delete linked items first.', needClient:'Add a client first.', needProject:'Add a project first.', duplicate:'This name is already in use.', invalid:'Enter a name and select a valid item.', storageError:'This browser could not save your data.', confirm:'Delete this item?'}
+};
+const key = 'madar-workspace-v1';
+const initial = {lang:'ar', clients:[], projects:[], tasks:[]};
+let state = initial;
+try {
+  const stored = JSON.parse(localStorage.getItem(key));
+  if (stored && labels[stored.lang] && types.every(type => Array.isArray(stored[type]))) state = stored;
+} catch {
+  // The workspace can still be viewed when storage is unavailable.
+}
+const byId = id => document.getElementById(id);
+const t = key => labels[state.lang][key];
+const find = (type, id) => state[type].find(item => item.id === id);
+const view = () => types.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+const dialog = byId('dialog');
+let search = '';
+let editing;
+function element(tag, value, className) {
+  const node = document.createElement(tag);
+  if (value !== undefined) node.textContent = value;
+  if (className) node.className = className;
+  return node;
+}
+function action(label, handler, className) {
+  const node = element('button', t(label), className);
+  node.type = 'button';
+  node.addEventListener('click', handler);
+  return node;
+}
+function notify(message) {
+  byId('notice').textContent = t(message);
+}
+function persist(next) {
+  try {
+    localStorage.setItem(key, JSON.stringify(next));
+    state = next;
+    return true;
+  } catch {
+    notify('storageError');
+    return false;
+  }
+}
+function row(type, item, editable) {
+  const node = element('article', undefined, 'row');
+  const detail = element('div');
+  const name = element('strong', item.name);
+  name.dir = 'auto';
+  detail.append(name);
+  const parent = type === 'projects' ? find('clients', item.parent) : type === 'tasks' ? find('projects', item.parent) : null;
+  const subtitle = [parent?.name, item.due].filter(Boolean).join(' · ');
+  if (subtitle) detail.append(element('p', subtitle));
+  const actions = element('div', undefined, 'actions');
+  if (type === 'tasks') actions.append(element('span', t(item.status), 'status'));
+  if (editable) actions.append(action('edit', () => openEditor(type,item)), action('remove', () => remove(type,item),'danger'));
+  node.append(detail, actions);
+  return node;
+}
+function render() {
+  document.documentElement.lang = state.lang;
+  document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
+  const page = view();
+  byId('workspace').textContent = t('workspace');
+  byId('title').textContent = t(page);
+  byId('language').textContent = t('language');
+  const tabs = ['overview', ...types].map(type => {
+    const link = element('a',t(type));
+    link.href = '#' + type;
+    if (type === page) link.setAttribute('aria-current','page');
+    return link;
+  });
+  byId('nav').replaceChildren(...tabs);
+  const root = byId('content');
+  const panel = element('div',undefined,'panel');
+  const list = element('div');
+  if (page === 'overview') {
+    const cards = element('div',undefined,'cards');
+    for (const type of types) {
+      const link = element('a',undefined,'card');
+      link.href = '#' + type;
+      link.append(element('span',t(type)),element('strong',String(state[type].length)));
+      cards.append(link);
+    }
+    panel.append(element('h2',t('recent')),list);
+    const openTasks = state.tasks.filter(item => item.status !== 'done').sort((a,b) => (a.due || '9999').localeCompare(b.due || '9999'));
+    list.append(...openTasks.slice(0,5).map(item => row('tasks',item,false)));
+    root.replaceChildren(cards,panel);
+  } else {
+    const toolbar = element('div',undefined,'toolbar');
+    const input = element('input');
+    input.type = 'search';
+    input.placeholder = t('search');
+    input.setAttribute('aria-label',t('search'));
+    input.value = search;
+    function fillList() {
+      const results = state[page].filter(item => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+      list.replaceChildren(...results.map(item => row(page,item,true)));
+      if (!results.length) list.append(element('p',t('empty'),'empty'));
+    }
+    input.addEventListener('input', () => { search = input.value; fillList(); });
+    toolbar.append(input,action('add',() => openEditor(page),'primary'));
+    panel.append(toolbar,list);
+    fillList();
+    root.replaceChildren(panel);
+  }
+  if (!list.childElementCount) list.append(element('p',t('empty'),'empty'));
+}
+function field(label, control, name, value) {
+  control.name = name;
+  control.value = value;
+  const wrapper = element('label',t(label));
+  wrapper.append(control);
+  byId('fields').append(wrapper);
+}
+function select(options) {
+  const control = element('select');
+  for (const [value,label] of options) {
+    const option = element('option',label);
+    option.value = value;
+    control.append(option);
+  }
+  return control;
+}
+function openEditor(type, item) {
+  const parentType = type === 'projects' ? 'clients' : type === 'tasks' ? 'projects' : null;
+  if (parentType && !state[parentType].length) {
+    notify(parentType === 'clients' ? 'needClient' : 'needProject');
+    return;
+  }
+  editing = {type,item,parentType};
+  byId('fields').replaceChildren();
+  byId('dialog-title').textContent = t(item ? 'edit' : 'add') + ' · ' + t(type);
+  const name = element('input');
+  name.required = true;
+  name.maxLength = 120;
+  name.dir = 'auto';
+  field('name',name,'name',item?.name ?? '');
+  if (parentType) {
+    const options = state[parentType].map(parent => [parent.id,parent.name]);
+    field(parentType === 'clients' ? 'client' : 'project',select(options),'parent',item?.parent ?? options[0][0]);
+  }
+  if (type === 'tasks') {
+    field('status',select(['planned','active','done'].map(status => [status,t(status)])),'status',item?.status ?? 'planned');
+    const due = element('input');
+    due.type = 'date';
+    field('due',due,'due',item?.due ?? '');
+  }
+  byId('cancel').textContent = t('cancel');
+  byId('save').textContent = t('save');
+  dialog.showModal();
+  name.focus();
+}
+byId('editor').addEventListener('submit',event => {
+  event.preventDefault();
+  const {type,item,parentType} = editing;
+  const form = new FormData(event.currentTarget);
+  const name = form.get('name').trim();
+  const parent = form.get('parent');
+  if (!name || (parentType && !find(parentType,parent))) {
+    byId('editor').elements.name.setCustomValidity(t('invalid'));
+    byId('editor').reportValidity();
+    return;
+  }
+  if (state[type].some(other => other.id !== item?.id && other.parent === parent && other.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    byId('editor').elements.name.setCustomValidity(t('duplicate'));
+    byId('editor').reportValidity();
+    return;
+  }
+  const record = {id:item?.id ?? crypto.randomUUID(), name, parent};
+  if (type === 'tasks') Object.assign(record,{status:form.get('status'),due:form.get('due')});
+  const records = item ? state[type].map(other => other.id === item.id ? record : other) : [...state[type],record];
+  if (!persist({...state,[type]:records})) return;
+  dialog.close();
+  render();
+  notify('saved');
+});
+byId('editor').addEventListener('input',() => byId('editor').elements.name.setCustomValidity(''));
+byId('cancel').addEventListener('click',() => dialog.close());
+function remove(type, item) {
+  const linked = type === 'clients' ? state.projects : type === 'projects' ? state.tasks : [];
+  if (linked.some(record => record.parent === item.id)) return notify('blocked');
+  if (window.confirm(t('confirm')) && persist({...state,[type]:state[type].filter(record => record.id !== item.id)})) {
+    render();
+    notify('removed');
+  }
+}
+byId('language').addEventListener('click',() => {
+  if (persist({...state,lang:state.lang === 'ar' ? 'en' : 'ar'})) render();
+});
+window.addEventListener('hashchange',() => {
+  search = '';
+  byId('notice').textContent = '';
+  render();
+});
+render();
+</script>
+</body>
+</html>
+</html>
