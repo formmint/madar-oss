@@ -1,5 +1,5 @@
 # MADAR OSS | مَدار
-
+[جرّب مَدار مباشرة · Try the live demo](https://formmint.github.io/madar-oss/)
 [العربية](#العربية) · [English](#english)
 
 ## العربية
