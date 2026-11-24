@@ -18,9 +18,13 @@
 - إرفاق الفواتير وتسجيل الدفعات ومتابعة الرصيد المتبقي.
 - واجهة عربية وإنجليزية للوكالة والعميل.
 
-### حالة المشروع
+### جرّب النسخة الحالية
 
-المشروع في مرحلة التأسيس. الميزات أعلاه تمثل النطاق المخطط للنسخة الأولى. سنضيف تعليمات التشغيل والمساهمة عند توفر نسخة قابلة للتشغيل.
+نزّل المستودع من **Code → Download ZIP**، فك الضغط وافتح `index.html` في المتصفح. يمكنك أيضًا تشغيله من مجلد المشروع بالأمر `python3 -m http.server 8000` ثم فتح <http://localhost:8000>.
+
+تدعم النسخة التجريبية إدارة العملاء والمشاريع والمهام وتبديل اللغة. جرّب إضافة عميل وهمي، ثم مشروع ومهمة مرتبطين به. حدّث الصفحة وتأكد من بقاء المهمة، ثم جرّب زر **English**. تُحفظ البيانات محليًا في المتصفح. بوابة العميل والاعتمادات والفواتير ضمن النطاق المخطط.
+
+للمشاركة، اقرأ [دليل المساهمة](CONTRIBUTING.md#العربية).
 
 ## English
 
@@ -38,6 +42,14 @@ An agency creates a client project, assigns tasks, and uploads a design or video
 - Attach invoices, record payments, and track outstanding balances.
 - Support Arabic and English across the agency workspace and client portal.
 
-### Project status
+### Try the current prototype
 
-MADAR OSS is in its initial setup phase. The features above describe the planned first release. Setup and contribution instructions will follow once a runnable version is available.
+Select **Code → Download ZIP**, extract it, and open `index.html` in a browser. Alternatively, run `python3 -m http.server 8000` from the project folder and open <http://localhost:8000>.
+
+The prototype supports clients, projects, tasks, and language switching. Add a sample client, a project for that client, and a task for that project. Refresh to verify the task persists, then switch languages. Data is stored locally in your browser. The client portal, approvals, and invoicing are planned.
+
+See the [contribution guide](CONTRIBUTING.md#english) to get involved.
+
+## License
+
+[MIT](LICENSE)
